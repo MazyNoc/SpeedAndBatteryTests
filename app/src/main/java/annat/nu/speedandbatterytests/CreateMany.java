@@ -18,7 +18,7 @@ public class CreateMany {
             MyObject myObject = new MyObject();
             myObject.uuid = UUID.randomUUID();
             myObject.version = version++;
-            if((myObject.uuid.getLeastSignificantBits() & 0xf) < 3){
+            if((UUID.randomUUID().getLeastSignificantBits() & 0xf) < 3){
                 version=0;
             }
             myObject.timeStamp = Calendar.getInstance();
@@ -33,7 +33,7 @@ public class CreateMany {
         int version = 0;
         for(int i=0; i<count; i++){
             DbFlowTable1 myObject = new DbFlowTable1();
-            myObject.uuid = UUID.randomUUID().toString();
+            myObject.uuid = UUID.randomUUID();
             myObject.version = version++;
             if((UUID.randomUUID().getLeastSignificantBits() & 0xf) < 3){
                 version=0;

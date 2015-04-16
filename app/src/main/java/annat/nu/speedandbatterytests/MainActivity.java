@@ -1,23 +1,26 @@
 package annat.nu.speedandbatterytests;
 
 import android.app.Activity;
-import android.app.ActionBar;
 import android.app.Fragment;
 import android.os.Bundle;
-import android.transition.TransitionManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.os.Build;
 
-import com.raizlabs.android.dbflow.annotation.Database;
+import com.raizlabs.android.dbflow.config.BaseDatabaseDefinition;
 import com.raizlabs.android.dbflow.config.FlowManager;
 import com.raizlabs.android.dbflow.runtime.TransactionManager;
+import com.raizlabs.android.dbflow.runtime.transaction.BaseTransaction;
+import com.raizlabs.android.dbflow.runtime.transaction.TransactionListener;
+import com.raizlabs.android.dbflow.runtime.transaction.process.ProcessModelInfo;
+import com.raizlabs.android.dbflow.sql.language.From;
+import com.raizlabs.android.dbflow.sql.language.Select;
 
 import java.util.Collection;
+import java.util.List;
 
 import annat.nu.speedandbatterytests.dbflow.DbFlowTable1;
 import annat.nu.speedandbatterytests.pure.MyDatabase;
@@ -33,13 +36,14 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         FlowManager.init(this);
+
         mydb = new MyDatabase(this);
 
         setContentView(R.layout.activity_main);
         if (savedInstanceState == null) {
             getFragmentManager().beginTransaction()
-                    .add(R.id.container, new PlaceholderFragment())
-                    .commit();
+                .add(R.id.container, new PlaceholderFragment())
+                .commit();
         }
     }
 
@@ -87,10 +91,20 @@ public class MainActivity extends Activity {
             view.findViewById(R.id.createData).setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    nativeCreate(10000);
-                    dbflowCreate(10000);
+                    int records = 100_000;
+                    nativeCreate(records);
+                    dbflowCreate(records);
                 }
             });
+
+            view.findViewById(R.id.selectData).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    nativeSelect();
+                    dbflowSelect();
+                }
+            });
+
         }
 
         private void nativeCreate(int records) {
@@ -101,15 +115,37 @@ public class MainActivity extends Activity {
             Log.d("SpeedTest", String.format("native insert %d record, %d ms", records, end - start));
         }
 
-        private void dbflowCreate(int records) {
-            Collection<DbFlowTable1> dbFlowTable1 = CreateMany.createDbFlowTable1(records);
-            long start = System.currentTimeMillis();
-            
-            for (DbFlowTable1 flowTable1 : dbFlowTable1) {
-                flowTable1.insert(false);
-            }
+        private void nativeSelect() {
+            final long start = System.currentTimeMillis();
+            List<MyObject> dbFlowTable1s = MyDatabase.instance.queryData();
+            long end = System.currentTimeMillis();
+            Log.d("SpeedTest", String.format("native selected %d record, %d ms", dbFlowTable1s.size(), end - start));
+        }
+
+        private void dbflowCreate(final int records) {
+            final Collection<DbFlowTable1> dbFlowTable1 = CreateMany.createDbFlowTable1(records);
+
+            BaseDatabaseDefinition database = FlowManager.getDatabaseForTable(DbFlowTable1.class);
+            final long start = System.currentTimeMillis();
+            TransactionManager.transact(database.getWritableDatabase(), new Runnable() {
+                @Override
+                public void run() {
+                    for (DbFlowTable1 flowTable1 : dbFlowTable1) {
+                        flowTable1.insert(false);
+                    }
+                }
+            });
             long end = System.currentTimeMillis();
             Log.d("SpeedTest", String.format("DbFlow insert %d record, %d ms", records, end - start));
+
         }
+
+        private void dbflowSelect() {
+            final long start = System.currentTimeMillis();
+            List<DbFlowTable1> dbFlowTable1s = new Select().from(DbFlowTable1.class).queryList();
+            long end = System.currentTimeMillis();
+            Log.d("SpeedTest", String.format("DbFlow selected %d record, %d ms", dbFlowTable1s.size(), end - start));
+        }
+
     }
 }

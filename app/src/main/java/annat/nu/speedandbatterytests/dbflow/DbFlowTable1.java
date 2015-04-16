@@ -11,8 +11,9 @@ import java.util.UUID;
 public class DbFlowTable1 extends BaseModel{
 
     @Column(columnType = Column.PRIMARY_KEY)
-    public String uuid;
+    public UUID uuid;
 
+    @Column
     public int version;
 
     @Column
